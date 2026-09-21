@@ -33,18 +33,20 @@
 
   <!-- Plugins de terceros -->
   <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
-  <script src="https://unpkg.com/@jspsych/extension-pipe"></script>
 
   <!-- Estilos -->
-<link href="jspsych/dist/jspsych.css" rel="stylesheet" type="text/css" />
-<link href="estilos.css" rel="stylesheet" type="text/css" />
-
- 
+  <link href="jspsych/dist/jspsych.css" rel="stylesheet" type="text/css" />
+  <link href="estilos.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
   <div id="jspsych-experiment-container"></div>
 
   <script>
+    /**
+     * Detección segura de iOS / iPhone
+     */
+    const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
     /**
      * ============================================
      * CONFIGURACIÓN PRINCIPAL
@@ -56,11 +58,10 @@
       }
     });
 
-    // FIX: Bandera para evitar el beforeunload al finalizar normalmente
     let experimentoFinalizado = false;
 
     window.addEventListener('beforeunload', (event) => {
-      if (experimentoFinalizado) return;
+      if (experimentoFinalizado || esIOS) return; // Se desactiva en iOS para evitar congelamiento de UI
       event.preventDefault();
       event.returnValue = '¿Estás seguro de que quieres salir? Perderás tu progreso.';
     });
@@ -83,11 +84,10 @@
      * ============================================
      */
     const MATRIZ_CONTENIDO = [
-      { dominio: "Psicoeducación", seccion: "Cuadro Descriptivo", tablaHTML: TABLA_PSICO },
-      { dominio: "Polifarmacia",  seccion: "Cuadro Descriptivo", tablaHTML: TABLA_POLIFARMACIA },
-      // FIX: typo SUPLENETACION → SUPLEMENTACION (asumiendo que la variable correcta es TABLA_SUPLEMENTACION)
-      { dominio: "Suplementación", seccion: "Cuadro Descriptivo", tablaHTML: TABLA_SUPLEMENTACION },
-      { dominio: "Ejercicio",     seccion: "Cuadro Descriptivo", tablaHTML: TABLA_EJERCICIO },
+      { dominio: "Psicoeducación", seccion: "Cuadro Descriptivo", tablaHTML: typeof TABLA_PSICO !== 'undefined' ? TABLA_PSICO : '' },
+      { dominio: "Polifarmacia",  seccion: "Cuadro Descriptivo", tablaHTML: typeof TABLA_POLIFARMACIA !== 'undefined' ? TABLA_POLIFARMACIA : '' },
+      { dominio: "Suplementación", seccion: "Cuadro Descriptivo", tablaHTML: typeof TABLA_SUPLEMENTACION !== 'undefined' ? TABLA_SUPLEMENTACION : '' },
+      { dominio: "Ejercicio",      seccion: "Cuadro Descriptivo", tablaHTML: typeof TABLA_EJERCICIO !== 'undefined' ? TABLA_EJERCICIO : '' },
     ];
 
     const ENSAYOS_EVALUACION = MATRIZ_CONTENIDO.map((item) => ({
@@ -134,7 +134,6 @@
             isRequired: true
           },
           {
-            // FIX: era otra vez "3." — ahora "4."
             type: 'radiogroup',
             name: 'relevancia',
             title: '4. La inclusión de este dominio es esencial y significativo para la prevención de caídas.',
@@ -160,10 +159,10 @@
      * ============================================
      */
     const MATRIZ_SESIONES = [
-      { dominio: "Psicoeducación", seccion: "Planificación de sesiones", tablaHTML: SESIONES_PSICO },
-      { dominio: "Polifarmacia",  seccion: "Planificación de sesiones", tablaHTML: SESIONES_POLIFARMACIA },
-      { dominio: "Suplementación", seccion: "Planificación de sesiones", tablaHTML: SESIONES_SUPLEMENTACION },
-      { dominio: "Ejercicio",     seccion: "Planificación de sesiones", tablaHTML: SESIONES_EJERCICIO },
+      { dominio: "Psicoeducación", seccion: "Planificación de sesiones", tablaHTML: typeof SESIONES_PSICO !== 'undefined' ? SESIONES_PSICO : '' },
+      { dominio: "Polifarmacia",  seccion: "Planificación de sesiones", tablaHTML: typeof SESIONES_POLIFARMACIA !== 'undefined' ? SESIONES_POLIFARMACIA : '' },
+      { dominio: "Suplementación", seccion: "Planificación de sesiones", tablaHTML: typeof SESIONES_SUPLEMENTACION !== 'undefined' ? SESIONES_SUPLEMENTACION : '' },
+      { dominio: "Ejercicio",      seccion: "Planificación de sesiones", tablaHTML: typeof SESIONES_EJERCICIO !== 'undefined' ? SESIONES_EJERCICIO : '' },
     ];
 
     const ENSAYOS_SESIONES = MATRIZ_SESIONES.map((item) => ({
@@ -224,12 +223,31 @@
 
     /**
      * ============================================
-     * BIENVENIDA
+     * BIENVENIDA (Inmunizado para iPhone)
      * ============================================
      */
     const BIENVENIDA = {
-      type: jsPsychFullscreen,
+      type: esIOS ? jsPsychHtmlButtonResponse : jsPsychFullscreen,
       fullscreen_mode: true,
+      stimulus: `
+        <div class="message-container">
+          <div class="logo-container">
+            <img src="img/logo_uaeh.png" alt="Logo UAEH">
+            <img src="img/logo_icsa.png" alt="Logo ICSA">
+          </div>
+          <h2>¡Bienvenido!</h2>
+          <p style="font-size: 18px; color: #555;">
+            Los responsables de este proyecto de investigación
+          </p>
+          <p style="font-size: 20px; color: #000;">
+            <strong>¡AGRADECEN TU PARTICIPACIÓN!</strong>
+          </p>
+          <p style="margin-top: 25px; line-height: 1.8; color: #333;">
+            Daniela Vargas Ramirez <br>
+            Dr. Ricardo I. Bravo Chávez <br>
+          </p>
+        </div>
+      `,
       message: `
         <div class="message-container">
           <div class="logo-container">
@@ -249,9 +267,10 @@
           </p>
         </div>
       `,
+      choices: ['Comenzar'],
       button_label: 'Comenzar',
       on_finish: function() {
-        if (document.fullscreenElement) {
+        if (!esIOS && document.fullscreenElement) {
           document.exitFullscreen().catch(err => {
             console.log('Error al salir de pantalla completa:', err);
           });
@@ -305,7 +324,7 @@
       ],
       on_finish: function(data) {
         if (data.response === 1) {
-          experimentoFinalizado = true; // FIX: no bloquear cierre
+          experimentoFinalizado = true;
           jsPsych.endExperiment(`
             <div style="padding:30px 20px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
               <h3 style="font-size:clamp(20px,4vw,28px);color:#d32f2f;margin-bottom:10px;">El experimento ha finalizado</h3>
@@ -401,7 +420,6 @@
     const ESTUDIOS_ACTUALES = {
       type: jsPsychSurveyMultiChoice,
       questions: [{
-        // FIX: typos "acutalmente" → "actualmente", "encuencuentra" → "encuentra"
         prompt: '¿Se encuentra <b>estudiando</b> actualmente? Por favor, indique su nivel',
         name: 'estudios_actuales',
         options: ['Especialidad', 'Maestría', 'Doctorado', 'No aplica'],
@@ -549,7 +567,6 @@
       `
     ];
 
-    /** Bloque de instrucciones */
     const INSTRUCCIONES = {
       type: jsPsychInstructions,
       pages: INSTRUCCIONES_PAGINAS,
@@ -558,7 +575,6 @@
       button_label_next: 'Siguiente'
     };
 
-    /** Verificación de comprensión */
     const COMPRENSION = {
       type: jsPsychHtmlSliderResponse,
       stimulus: '<div style="font-size:24px;font-weight:bold;">¿Qué tan bien comprendió<br>las instrucciones?</div>',
@@ -571,7 +587,6 @@
       button_label: 'Continuar'
     };
 
-    /** Ensayo de aviso (solo se activa si la comprensión < 50) */
     const AVISO_REPETIR_NODO = {
       timeline: [{
         type: jsPsychHtmlButtonResponse,
@@ -583,26 +598,19 @@
         choices: ['Volver a leer las instrucciones']
       }],
       conditional_function: function() {
-        // Obtiene el último ensayo registrado (que es el slider COMPRENSION)
         const ultimoEnsayo = jsPsych.data.get().last(1).values()[0];
         return Number(ultimoEnsayo.response) < 50;
       }
     };
 
-    /** Bucle de instrucciones */
     const BUCLE_INSTRUCCIONES = {
       timeline: [INSTRUCCIONES, COMPRENSION, AVISO_REPETIR_NODO],
       loop_function: function(data) {
-        // Busca el último ensayo de tipo html-slider-response registrado en este bucle
         const sliderData = data.filter({ trial_type: 'html-slider-response' }).last(1).values()[0];
-        
         if (!sliderData) return false;
-        
-        // Repite el bucle completo si la respuesta es menor a 50
         return Number(sliderData.response) < 50;
       }
     };
-
 
     /**
      * ============================================
@@ -624,7 +632,7 @@
       `,
       choices: ['Continuar'],
       on_finish: function() {
-        if (document.documentElement.requestFullscreen) {
+        if (!esIOS && document.documentElement.requestFullscreen) {
           document.documentElement.requestFullscreen().catch(err => {
             console.log("Error al entrar en pantalla completa:", err);
           });
@@ -632,7 +640,6 @@
       }
     };
 
-    // FIX: transición entre bloques (mensaje distinto)
     const TRANSICION_ENTRE_BLOQUES = {
       type: jsPsychHtmlButtonResponse,
       stimulus: `
@@ -654,10 +661,8 @@
      */
     const timeline = [];
 
-    // 1. Bienvenida y consentimiento
     timeline.push(BIENVENIDA, CONSENTIMIENTO_INFORMADO);
 
-    // 2. Sociodemográficos (FIX: incluir todos los que estaban definidos)
     timeline.push(
       FECHA_NACIMIENTO,
       SEXO,
@@ -666,9 +671,9 @@
       FORMACION,
       GRADO_ACADEMICO,
       ESTUDIOS_ACTUALES,
-      TRABAJO_PM,        // FIX: estaba definido pero no usado
+      TRABAJO_PM,
       EXPERIENCIA_PM,
-      HORAS_PM,          // FIX: estaba definido pero no usado
+      HORAS_PM,
       CONOCIMIENTO,
       EXP_INTERVENCIONES,
       EXP_CAIDAS,
@@ -677,15 +682,10 @@
       OTRO_FW
     );
 
-    // 3. Instrucciones + comprensión
     timeline.push(BUCLE_INSTRUCCIONES);
-
-    // 4. Transición y bloque de evaluación de contenido
     timeline.push(INSTRUCCIONES_EVALUACION);
     timeline.push(jsPsych.randomization.shuffle(ENSAYOS_EVALUACION));
-
-    // 5. Transición entre bloques + bloque de sesiones
-    timeline.push(TRANSICION_ENTRE_BLOQUES); // FIX: usar transición específica
+    timeline.push(TRANSICION_ENTRE_BLOQUES);
     timeline.push(jsPsych.randomization.shuffle(ENSAYOS_SESIONES));
 
     /**
@@ -699,8 +699,8 @@
     const GUARDAR_CSV = {
       type: jsPsychPipe,
       action: "save",
-      experiment_id: "SuZetgxMEyJ5", // Reemplaza por tu ID de DataPipe (Google Drive/OSF)
-      filename: FILENAME, // o () => `${SUBJECT_ID}.csv`
+      experiment_id: "SuZetgxMEyJ5",
+      filename: FILENAME,
       data_string: function () {
         const datosFiltrados = jsPsych.data.get()
           .filterCustom((trial) => {
@@ -727,7 +727,6 @@
           }
         });
 
-        // Retorna la cadena en formato CSV para DataPipe
         return datosFiltrados.csv();
       }
     };
@@ -746,7 +745,7 @@
         <p>Tus respuestas han sido registradas de manera exitosa y anónima.</p>
         <p style="color:#666;font-size:14px;margin-top:20px;">Ya puedes cerrar esta ventana.</p>
       `,
-      choices: ['Finalizar'], // FIX: botón en lugar de timeout ciego
+      choices: ['Finalizar'],
       on_finish: function() {
         experimentoFinalizado = true;
       }
