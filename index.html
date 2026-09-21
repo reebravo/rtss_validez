@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Validación de Estímulos - Estudio de Validación Emocional</title>
+  <link rel="shortcut icon" href="https://www.uaeh.edu.mx/imagen/imagenes/2020/recursos/garza.png" />
+
+  <!-- ============================================
+       CARGA DE DEPENDENCIAS
+       ============================================ -->
+  <script src="tablas_contenido.js"></script>
+  <script src="tablas_sesiones.js"></script>
+
+  <!-- jsPsych Core -->
+  <script src="jspsych/dist/jspsych.js"></script>
+
+  <!-- Plugins de jsPsych -->
+  <script src="jspsych/dist/plugin-html-button-response.js"></script>
+  <script src="jspsych/dist/plugin-survey-text.js"></script>
+  <script src="jspsych/dist/plugin-html-keyboard-response.js"></script>
+  <script src="jspsych/dist/plugin-survey-html-form.js"></script>
+  <script src="jspsych/dist/plugin-survey-multi-choice.js"></script>
+  <script src="jspsych/dist/plugin-html-slider-response.js"></script>
+  <script src="jspsych/dist/plugin-survey-multi-select.js"></script>
+  <script src="jspsych/dist/plugin-fullscreen.js"></script>
+  <script src="jspsych/dist/plugin-instructions.js"></script>
+  <script src="jspsych/dist/plugin-preload.js"></script>
+
+  <!-- FIX: Plugin SurveyJS (@jspsych/plugin-survey) -->
+  <script src="https://unpkg.com/@jspsych/plugin-survey@1.0.1"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@1.0.1/css/survey.css">
+
+  <!-- Plugins de terceros -->
+  <script src="https://unpkg.com/@jspsych-contrib/plugin-pipe"></script>
+  <script src="https://unpkg.com/@jspsych/extension-pipe"></script>
+
+  <!-- Estilos -->
+<link href="jspsych/dist/jspsych.css" rel="stylesheet" type="text/css" />
+<link href="estilos.css" rel="stylesheet" type="text/css" />
+
+ 
+</head>
+<body>
+  <div id="jspsych-experiment-container"></div>
+
+  <script>
+    /**
+     * ============================================
+     * CONFIGURACIÓN PRINCIPAL
+     * ============================================
+     */
+    const jsPsych = initJsPsych({
+      on_close: function() {
+        console.log('⚠️ El participante cerró la ventana antes de terminar.');
+      }
+    });
+
+    // FIX: Bandera para evitar el beforeunload al finalizar normalmente
+    let experimentoFinalizado = false;
+
+    window.addEventListener('beforeunload', (event) => {
+      if (experimentoFinalizado) return;
+      event.preventDefault();
+      event.returnValue = '¿Estás seguro de que quieres salir? Perderás tu progreso.';
+    });
+
+    /**
+     * ============================================
+     * ESCALA LIKERT
+     * ============================================
+     */
+    const ESCALA_LIKERT = [
+      "Totalmente en desacuerdo",
+      "En desacuerdo",
+      "De acuerdo",
+      "Totalmente de acuerdo"
+    ];
+
+    /**
+     * ============================================
+     * MATRIZ DE CONTENIDO Y ENSAYOS
+     * ============================================
+     */
+    const MATRIZ_CONTENIDO = [
+      { dominio: "Psicoeducación", seccion: "Cuadro Descriptivo", tablaHTML: TABLA_PSICO },
+      { dominio: "Polifarmacia",  seccion: "Cuadro Descriptivo", tablaHTML: TABLA_POLIFARMACIA },
+      // FIX: typo SUPLENETACION → SUPLEMENTACION (asumiendo que la variable correcta es TABLA_SUPLEMENTACION)
+      { dominio: "Suplementación", seccion: "Cuadro Descriptivo", tablaHTML: TABLA_SUPLEMENTACION },
+      { dominio: "Ejercicio",     seccion: "Cuadro Descriptivo", tablaHTML: TABLA_EJERCICIO },
+    ];
+
+    const ENSAYOS_EVALUACION = MATRIZ_CONTENIDO.map((item) => ({
+      type: jsPsychSurvey,
+      survey_json: {
+        showQuestionNumbers: false,
+        elements: [
+          {
+            type: 'html',
+            name: 'encabezado_tabla',
+            html: `
+              <div class="eval-layout">
+                <div class="panel-contenido">
+                  <span class="badge">${item.seccion}</span>
+                  <h2>${item.dominio}</h2>
+                  ${item.tablaHTML}
+                </div>
+                <div class="panel-instrucciones">
+                  <h3>Evaluación de Contenido</h3>
+                  <p>Con base en la información mostrada a la izquierda, evalúe los criterios y agregue sus observaciones si lo considera necesario.</p>
+                </div>
+              </div>
+            `
+          },
+          {
+            type: 'radiogroup',
+            name: 'claridad',
+            title: '1. El objetivo y los componentes descritos son claros y comprensibles.',
+            choices: ESCALA_LIKERT,
+            isRequired: true
+          },
+          {
+            type: 'radiogroup',
+            name: 'coherencia',
+            title: '2. Los ingredientes propuestos guardan coherencia con los objetivos y mecanismos de acción.',
+            choices: ESCALA_LIKERT,
+            isRequired: true
+          },
+          {
+            type: 'radiogroup',
+            name: 'suficiencia',
+            title: '3. La información presentada en éste dominio es suficiente para prevenir caídas en adultos mayores.',
+            choices: ESCALA_LIKERT,
+            isRequired: true
+          },
+          {
+            // FIX: era otra vez "3." — ahora "4."
+            type: 'radiogroup',
+            name: 'relevancia',
+            title: '4. La inclusión de este dominio es esencial y significativo para la prevención de caídas.',
+            choices: ESCALA_LIKERT,
+            isRequired: true
+          },
+          {
+            type: 'comment',
+            name: 'comentarios',
+            title: 'Observaciones o sugerencias de mejora para esta sección (Opcional):',
+            placeholder: 'Escriba aquí sus comentarios, adiciones o correcciones...',
+            isRequired: false,
+            rows: 4
+          }
+        ]
+      },
+      data: { dominio: item.dominio, seccion: item.seccion }
+    }));
+
+    /**
+     * ============================================
+     * MATRIZ DE SESIONES
+     * ============================================
+     */
+    const MATRIZ_SESIONES = [
+      { dominio: "Psicoeducación", seccion: "Planificación de sesiones", tablaHTML: SESIONES_PSICO },
+      { dominio: "Polifarmacia",  seccion: "Planificación de sesiones", tablaHTML: SESIONES_POLIFARMACIA },
+      { dominio: "Suplementación", seccion: "Planificación de sesiones", tablaHTML: SESIONES_SUPLEMENTACION },
+      { dominio: "Ejercicio",     seccion: "Planificación de sesiones", tablaHTML: SESIONES_EJERCICIO },
+    ];
+
+    const ENSAYOS_SESIONES = MATRIZ_SESIONES.map((item) => ({
+      type: jsPsychSurvey,
+      survey_json: {
+        showQuestionNumbers: false,
+        elements: [
+          {
+            type: 'html',
+            name: 'encabezado_tabla',
+            html: `
+              <div class="eval-layout">
+                <div class="panel-contenido">
+                  <span class="badge">${item.seccion}</span>
+                  <h2>${item.dominio}</h2>
+                  ${item.tablaHTML}
+                </div>
+                <div class="panel-instrucciones">
+                  <h3>Evaluación de Sesiones</h3>
+                  <p>Con base en la información mostrada a la izquierda, evalúe los criterios y agregue sus observaciones si lo considera necesario.</p>
+                </div>
+              </div>
+            `
+          },
+          {
+            type: 'radiogroup',
+            name: 'claridad',
+            title: '1. Las instrucciones, actividades y materiales son de fácil comprensión y/o administración',
+            choices: ESCALA_LIKERT,
+            isRequired: true
+          },
+          {
+            type: 'radiogroup',
+            name: 'secuencia',
+            title: '2. Las sesiones guardan un orden lógico y siguen una progresión pedagógica o terapéutica adecuada',
+            choices: ESCALA_LIKERT,
+            isRequired: true
+          },
+          {
+            type: 'radiogroup',
+            name: 'factibilidad',
+            title: '3. El programa se puede ejecutar dentro los límites de tiempo y recursos materiales requeridos',
+            choices: ESCALA_LIKERT,
+            isRequired: true
+          },
+          {
+            type: 'comment',
+            name: 'comentarios',
+            title: 'Observaciones o sugerencias de mejora para esta sección (Opcional):',
+            placeholder: 'Escriba aquí sus comentarios, adiciones o correcciones...',
+            isRequired: false,
+            rows: 4
+          }
+        ]
+      },
+      data: { dominio: item.dominio, seccion: item.seccion }
+    }));
+
+    /**
+     * ============================================
+     * BIENVENIDA
+     * ============================================
+     */
+    const BIENVENIDA = {
+      type: jsPsychFullscreen,
+      fullscreen_mode: true,
+      message: `
+        <div class="message-container">
+          <div class="logo-container">
+            <img src="img/logo_uaeh.svg" alt="Logo UAEH">
+            <img src="img/logo_icsa.svg" alt="Logo ICSA">
+          </div>
+          <h2>¡Bienvenido!</h2>
+          <p style="font-size: 18px; color: #555;">
+            Los responsables de este proyecto de investigación
+          </p>
+          <p style="font-size: 20px; color: #000;">
+            <strong>¡AGRADECEN TU PARTICIPACIÓN!</strong>
+          </p>
+          <p style="margin-top: 25px; line-height: 1.8; color: #333;">
+            Daniela Vargas Ramirez <br>
+            Dr. Ricardo I. Bravo Chávez <br>
+          </p>
+        </div>
+      `,
+      button_label: 'Comenzar',
+      on_finish: function() {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(err => {
+            console.log('Error al salir de pantalla completa:', err);
+          });
+        }
+      }
+    };
+
+    /**
+     * ============================================
+     * CONSENTIMIENTO INFORMADO
+     * ============================================
+     */
+    const CONSENTIMIENTO_INFORMADO = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: `
+        <div style="padding:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;line-height:1.6;max-height:75vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+          <h2 style="font-size:clamp(18px,4vw,24px);text-align:center;margin:0 0 10px 0;">
+            FORMULARIO DE CONSENTIMIENTO INFORMADO DIGITAL
+          </h2>
+          <p style="text-align:center;color:#555;font-size:clamp(13px,2.5vw,15px);">
+            <strong>Proyecto:</strong> "Validación de un programa multicomponente para la prevención de caídas en personas mayores según el sistema de especificación del tratamiento de rehabilitación."<br>
+            <strong>Contacto:</strong> va471168@uaeh.edu.mx<br>
+            <strong>Registro ante el comité de ética:</strong> CEI-ICSa-PRL-005
+          </p>
+          <hr style="border:0;border-top:2px solid #e0e0e0;margin:12px 0;">
+          <div style="font-size:clamp(13px,2.5vw,15px);color:#333;">
+            <p>Por favor, lea atentamente la siguiente información antes de decidir su participación:</p>
+            <div style="margin:12px 0;">
+              <p style="font-weight:bold;margin:0 0 3px 0;">1. ¿En qué consiste el estudio?</p>
+              <p style="margin:0;">El objetivo de este proyecto es la validación a través del juicio de evaluadores expertos de un programa multicomponente para la prevención de caídas en personas mayores según el sistema de especificación del tratamiento de rehabilitación. Su duración aproximada es de <strong>20 minutos</strong>.</p>
+            </div>
+            <div style="margin:12px 0;">
+              <p style="font-weight:bold;margin:0 0 3px 0;">2. Voluntariedad y derecho a retirarse</p>
+              <p style="margin:0;">Su participación es 100% voluntaria. Tiene el derecho de abandonar el estudio en cualquier momento cerrando la pestaña de su navegador.</p>
+            </div>
+            <div style="margin:12px 0;">
+              <p style="font-weight:bold;margin:0 0 3px 0;">3. Riesgos y Confidencialidad</p>
+              <p style="margin:0;">Este estudio se considera de <strong>riesgo mínimo</strong>. Los datos recolectados serán <strong>completamente anónimos</strong>.</p>
+            </div>
+            <div style="margin:15px 0 10px 0;padding:12px;background-color:#f8f9fa;border-left:4px solid #4CAF50;border-radius:4px;">
+              <p style="margin:0;">
+                <strong>Declaración de Consentimiento:</strong> Al presionar <strong style="color:#4CAF50;">"Acepto participar"</strong>, manifiesto que soy mayor de edad, que he leído esta información y que es mi decisión libre, consciente y voluntaria participar en esta investigación.
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+      choices: [
+        '<strong style="font-size:clamp(15px,2.5vw,18px);">✅ Acepto participar</strong>',
+        '<span style="font-size:clamp(13px,2vw,15px);">❌ No acepto / Salir</span>'
+      ],
+      on_finish: function(data) {
+        if (data.response === 1) {
+          experimentoFinalizado = true; // FIX: no bloquear cierre
+          jsPsych.endExperiment(`
+            <div style="padding:30px 20px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+              <h3 style="font-size:clamp(20px,4vw,28px);color:#d32f2f;margin-bottom:10px;">El experimento ha finalizado</h3>
+              <p style="font-size:clamp(14px,2.5vw,18px);color:#555;">
+                Usted decidió no aceptar los términos de participación.<br>
+                Ya puede cerrar esta ventana de forma segura.
+              </p>
+            </div>
+          `);
+        }
+      }
+    };
+
+    /**
+     * ============================================
+     * DATOS SOCIODEMOGRÁFICOS
+     * ============================================
+     */
+    const FECHA_NACIMIENTO = {
+      type: jsPsychSurveyHtmlForm,
+      preamble: 'Fecha de nacimiento',
+      html: `<p><input type="date" id="fecha_nacimiento" name="fecha_nacimiento" required></p>`,
+      button_label: 'Continuar',
+      data: { stimulus: 'fecha_nacimiento' }
+    };
+
+    const SEXO = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: 'Sexo biológico:',
+        name: 'sexo',
+        options: ['Hombre', 'Mujer'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'sexo' }
+    };
+
+    const ESTADO_REPUBLICA = {
+      type: jsPsychSurveyHtmlForm,
+      preamble: '<p>¿En qué <b>estado</b> de la república vive?</p>',
+      html: `
+        <select name="estado" class="custom-select" required>
+          <option value="" disabled selected hidden>Selecciona una opción...</option>
+          ${[
+            'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas',
+            'Chihuahua','Ciudad de México','Coahuila','Colima','Durango','Estado de México',
+            'Guanajuato','Guerrero','Hidalgo','Jalisco','Michoacán','Morelos','Nayarit',
+            'Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí',
+            'Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'
+          ].map(e => `<option value="${e}">${e}</option>`).join('')}
+        </select>
+      `,
+      button_label: 'Continuar',
+      data: { stimulus: 'estado_republica' }
+    };
+
+    const FORMACION = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿Cuál es su <b>formación</b> profesional?',
+        name: 'formacion',
+        options: [
+          'Médico','Geriatra','Otra especialidad médica','Gerontólogo',
+          'Psicólogo','Terapeuta físico','Enfermero'
+        ],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'formacion' }
+    };
+
+    const INSTITUCION_ADS = {
+      type: jsPsychSurveyHtmlForm,
+      preamble: '<p>Por favor, indique su <b>institución de adscripción</b> (Universidad, Hospital, Dependencia Federal/Estatal, etc.):</p>',
+      html: `<p><input name="institucion" type="text" required placeholder="Ej. UASLP" style="width:100%;max-width:400px;"/></p>`,
+      button_label: 'Continuar',
+      data: { stimulus: 'institucion_ads' }
+    };
+
+    const GRADO_ACADEMICO = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿Cuál es su <b>grado</b> académico <b>concluido</b> más alto?',
+        name: 'grado_academico',
+        options: ['Licenciatura', 'Especialidad', 'Maestría', 'Doctorado'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'grado_academico' }
+    };
+
+    const ESTUDIOS_ACTUALES = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        // FIX: typos "acutalmente" → "actualmente", "encuencuentra" → "encuentra"
+        prompt: '¿Se encuentra <b>estudiando</b> actualmente? Por favor, indique su nivel',
+        name: 'estudios_actuales',
+        options: ['Especialidad', 'Maestría', 'Doctorado', 'No aplica'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'estudios_actuales' }
+    };
+
+    const TRABAJO_PM = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿<b>Trabaja</b> directamente en la atención de <b>Personas Mayores</b>?',
+        name: 'trabajo',
+        options: ['Sí', 'No'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'trabajo' }
+    };
+
+    const EXPERIENCIA_PM = {
+      type: jsPsychSurveyHtmlForm,
+      preamble: '<p>Por favor, indique en años su <b>experiencia</b> en el trabajo con Personas Mayores:</p>',
+      html: `
+        <p>
+          Tengo aproximadamente
+          <input name="experiencia" type="number" step="1" min="1" max="99" required placeholder="Ej. 5" /> años trabajando con personas mayores.
+        </p>
+      `,
+      button_label: 'Continuar',
+      data: { stimulus: 'experiencia_pm' }
+    };
+
+    const HORAS_PM = {
+      type: jsPsychSurveyHtmlForm,
+      preamble: '<p>¿Cuántas <b>horas</b> dedica por semana al trabajo con Personas Mayores?</p>',
+      html: `
+        <p>
+          Dedico aproximadamente
+          <input name="horas_pm" type="number" step="1" min="0" max="60" required placeholder="Ej. 5" /> horas por semana.
+        </p>
+      `,
+      button_label: 'Continuar',
+      data: { stimulus: 'horas_pm' }
+    };
+
+    const CONOCIMIENTO = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿Cómo considera su <b>experiencia</b> en el campo de la <b>gerontología</b>?',
+        name: 'conocimiento',
+        options: ['Nula', 'Poca', 'Suficiente', 'Mucha'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'conocimiento' }
+    };
+
+    const EXP_INTERVENCIONES = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿Cómo considera su <b>experiencia</b> en <b>intervenciones</b> orientadas a la atención de Personas Mayores?',
+        name: 'exp_intervenciones',
+        options: ['Nula', 'Poca', 'Suficiente', 'Mucha'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'exp_intervenciones' }
+    };
+
+    const EXP_CAIDAS = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿Cómo considera su <b>experiencia</b> en intervenciones orientadas a la <b>prevención de caídas</b> en Personas Mayores?',
+        name: 'exp_caidas',
+        options: ['Nula', 'Poca', 'Suficiente', 'Mucha'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'exp_caidas' }
+    };
+
+    const EXP_RTSS = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿Qué tanta considera su <b>experiencia</b> en el Sistema de Especificación del Tratamiento de Rehabilitación (RTSS)?',
+        name: 'exp_rtss',
+        options: ['Nula', 'Poca', 'Suficiente', 'Mucha'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'exp_rtss' }
+    };
+
+    const IMP_RTSS = {
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: '¿Ha implementado antes <b>intervenciones</b> con base en el Sistema de Especificación del Tratamiento de Rehabilitación (RTSS)?',
+        name: 'imp_rtss',
+        options: ['Sí', 'No'],
+        required: true
+      }],
+      button_label: 'Continuar',
+      data: { stimulus: 'imp_rtss' }
+    };
+
+    const OTRO_FW = {
+      type: jsPsychSurveyHtmlForm,
+      preamble: '<p>¿Utiliza algún otro <b>marco de referencia</b> para intervenciones distinto al RTSS?</p>',
+      html: `
+        <p>
+          Mencione cuál/es:
+          <input name="otros_frameworks" type="text" required placeholder="Ej. ICF, OTPF, PIE, etc." />
+        </p>
+      `,
+      button_label: 'Continuar',
+      data: { stimulus: 'otros_frameworks_experiencia' }
+    };
+
+    /**
+     * ============================================
+     * INSTRUCCIONES Y COMPRENSIÓN
+     * ============================================
+     */
+    const INSTRUCCIONES_PAGINAS = [
+      `
+        <div style="max-width:650px;text-align:justify;margin:0 auto;line-height:1.6;font-size:14px;">
+          <p style="text-align:center;font-size:16px;"><b>¡Bienvenido/a al experimento!</b></p>
+          <p>Este estudio se enmarca en el <b>Sistema de Especificación de Tratamiento de Rehabilitación o RTSS</b> (por sus siglas en inglés). El <a href="https://pubmed.ncbi.nlm.nih.gov/30267666/">RTSS</a> constituye un marco metodológico diseñado para aportar precisión terminológica y rigor a los procedimientos clínicos mediante la descomposición de cualquier intervención en una tríada causal compuesta por:</p>
+          <ul style="padding-left:20px;margin-bottom:15px;">
+            <li style="margin-bottom:8px;"><b>Ingredientes:</b> Acciones observables y materiales seleccionados por el terapeuta.</li>
+            <li style="margin-bottom:8px;"><b>Mecanismos de acción:</b> Procesos biológicos o psicológicos activados por dichos ingredientes.</li>
+            <li style="margin-bottom:8px;"><b>Objetivos:</b> El cambio funcional específico que se busca alcanzar directamente en el paciente.</li>
+          </ul>
+          <p>Al eliminar la ambigüedad en la práctica profesional, aplicar el RTSS en un programa para adultos mayores permite que la prevención de caídas deje de ser un conjunto de consejos generales y se convierta en una prescripción técnica de alta precisión, cuyo fin último es preservar la capacidad funcional del individuo, fortalecer su autonomía y reducir la fragilidad para que pueda interactuar plenamente con su entorno.</p>
+        </div>
+      `,
+      `
+        <div style="max-width:600px;text-align:center;margin:0 auto;line-height:1.6;">
+          <p><b>Dinámica de la tarea</b></p>
+          <p>Su tarea consiste en evaluar una propuesta de intervención multicomponente para la prevención de caídas bajo el marco de referencia <b>RTSS</b>.</p>
+          <p>Revisará la tríada causal de 4 dimensiones para un programa de prevención de caídas. Así mismo, indicará su grado de acuerdo o desacuerdo con la planificación de las sesiones, estrategias de evaluación y objetivos.</p>
+        </div>
+      `
+    ];
+
+    /** Bloque de instrucciones */
+    const INSTRUCCIONES = {
+      type: jsPsychInstructions,
+      pages: INSTRUCCIONES_PAGINAS,
+      show_clickable_nav: true,
+      button_label_previous: 'Anterior',
+      button_label_next: 'Siguiente'
+    };
+
+    /** Verificación de comprensión */
+    const COMPRENSION = {
+      type: jsPsychHtmlSliderResponse,
+      stimulus: '<div style="font-size:24px;font-weight:bold;">¿Qué tan bien comprendió<br>las instrucciones?</div>',
+      labels: ['Nada en absoluto', 'Completamente'],
+      min: 0,
+      max: 100,
+      slider_start: 0,
+      require_movement: true,
+      slider_width: '100%',
+      button_label: 'Continuar'
+    };
+
+    /** Ensayo de aviso (solo se activa si la comprensión < 50) */
+    const AVISO_REPETIR_NODO = {
+      timeline: [{
+        type: jsPsychHtmlButtonResponse,
+        stimulus: `
+          <div style="max-width:600px;margin:0 auto;text-align:center;line-height:1.6;">
+            <p>Dado que quedan dudas sobre las instrucciones, revisémoslas una vez más.</p>
+          </div>
+        `,
+        choices: ['Volver a leer las instrucciones']
+      }],
+      conditional_function: function() {
+        // Obtiene el último ensayo registrado (que es el slider COMPRENSION)
+        const ultimoEnsayo = jsPsych.data.get().last(1).values()[0];
+        return Number(ultimoEnsayo.response) < 50;
+      }
+    };
+
+    /** Bucle de instrucciones */
+    const BUCLE_INSTRUCCIONES = {
+      timeline: [INSTRUCCIONES, COMPRENSION, AVISO_REPETIR_NODO],
+      loop_function: function(data) {
+        // Busca el último ensayo de tipo html-slider-response registrado en este bucle
+        const sliderData = data.filter({ trial_type: 'html-slider-response' }).last(1).values()[0];
+        
+        if (!sliderData) return false;
+        
+        // Repite el bucle completo si la respuesta es menor a 50
+        return Number(sliderData.response) < 50;
+      }
+    };
+
+
+    /**
+     * ============================================
+     * TRANSICIÓN A EVALUACIÓN
+     * ============================================
+     */
+    const INSTRUCCIONES_EVALUACION = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: `
+        <div style="max-width:650px;margin:0 auto;text-align:center;font-family:sans-serif;line-height:1.6;">
+          <h2 style="color:#333;margin-bottom:20px;">Fase de Evaluación</h2>
+          <p style="font-size:18px;color:#555;">Hemos concluido con la sección de preguntas generales.</p>
+          <p style="font-size:20px;color:#000;margin-top:20px;"><strong>Ahora comenzará la fase de evaluación.</strong></p>
+          <p style="font-size:16px;color:#666;margin-top:15px;">
+            A continuación, se te presentarán los elementos del programa.<br>
+            Por favor, evalúa la propuesta y selecciona tu grado de acuerdo o desacuerdo con la planificación del programa.
+          </p>
+        </div>
+      `,
+      choices: ['Continuar'],
+      on_finish: function() {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.log("Error al entrar en pantalla completa:", err);
+          });
+        }
+      }
+    };
+
+    // FIX: transición entre bloques (mensaje distinto)
+    const TRANSICION_ENTRE_BLOQUES = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: `
+        <div style="max-width:650px;margin:0 auto;text-align:center;font-family:sans-serif;line-height:1.6;">
+          <h2 style="color:#333;margin-bottom:20px;">Siguiente sección</h2>
+          <p style="font-size:16px;color:#666;">
+            Has completado la evaluación de contenidos.<br>
+            A continuación evaluarás la <b>planificación de sesiones</b> de cada dominio.
+          </p>
+        </div>
+      `,
+      choices: ['Continuar']
+    };
+
+    /**
+     * ============================================
+     * TIMELINE PRINCIPAL
+     * ============================================
+     */
+    const timeline = [];
+
+    // 1. Bienvenida y consentimiento
+    timeline.push(BIENVENIDA, CONSENTIMIENTO_INFORMADO);
+
+    // 2. Sociodemográficos (FIX: incluir todos los que estaban definidos)
+    timeline.push(
+      FECHA_NACIMIENTO,
+      SEXO,
+      ESTADO_REPUBLICA,
+      INSTITUCION_ADS,
+      FORMACION,
+      GRADO_ACADEMICO,
+      ESTUDIOS_ACTUALES,
+      TRABAJO_PM,        // FIX: estaba definido pero no usado
+      EXPERIENCIA_PM,
+      HORAS_PM,          // FIX: estaba definido pero no usado
+      CONOCIMIENTO,
+      EXP_INTERVENCIONES,
+      EXP_CAIDAS,
+      EXP_RTSS,
+      IMP_RTSS,
+      OTRO_FW
+    );
+
+    // 3. Instrucciones + comprensión
+    timeline.push(BUCLE_INSTRUCCIONES);
+
+    // 4. Transición y bloque de evaluación de contenido
+    timeline.push(INSTRUCCIONES_EVALUACION);
+    timeline.push(jsPsych.randomization.shuffle(ENSAYOS_EVALUACION));
+
+    // 5. Transición entre bloques + bloque de sesiones
+    timeline.push(TRANSICION_ENTRE_BLOQUES); // FIX: usar transición específica
+    timeline.push(jsPsych.randomization.shuffle(ENSAYOS_SESIONES));
+
+    /**
+     * ============================================
+     * GUARDADO DE DATOS
+     * ============================================
+     */
+    const SUBJECT_ID = jsPsych.randomization.randomID(10);
+    const FILENAME = `validacion-${SUBJECT_ID}.csv`;
+
+    const GUARDAR_CSV = {
+      type: jsPsychPipe,
+      action: "save",
+      experiment_id: "SuZetgxMEyJ5", // Reemplaza por tu ID de DataPipe (Google Drive/OSF)
+      filename: FILENAME, // o () => `${SUBJECT_ID}.csv`
+      data_string: function () {
+        const datosFiltrados = jsPsych.data.get()
+          .filterCustom((trial) => {
+            const esSurvey = trial.trial_type === 'survey' || trial.trial_type === 'survey-html-form';
+            const esSlider = trial.trial_type === 'html-slider-response';
+            const tieneRespuesta = trial.response !== null && trial.response !== undefined;
+            return tieneRespuesta && (esSurvey || esSlider || trial.dominio !== undefined);
+          })
+          .ignore([
+            'success', 'trial_type', 'response_index', 'view_history',
+            'slider_start', 'internal_node_id', 'question_order', 'stimulus'
+          ]);
+
+        datosFiltrados.values().forEach((trial) => {
+          if (typeof trial.response === 'object' && trial.response !== null) {
+            if (Array.isArray(trial.response)) {
+              trial.response = trial.response.join('; ');
+            } else {
+              Object.keys(trial.response).forEach((key) => {
+                trial[key] = trial.response[key];
+              });
+              trial.response = JSON.stringify(trial.response);
+            }
+          }
+        });
+
+        // Retorna la cadena en formato CSV para DataPipe
+        return datosFiltrados.csv();
+      }
+    };
+
+    timeline.push(GUARDAR_CSV);
+
+    /**
+     * ============================================
+     * DESPEDIDA
+     * ============================================
+     */
+    const DESPEDIDA = {
+      type: jsPsychHtmlButtonResponse,
+      stimulus: `
+        <h2>¡Muchas gracias por tu participación!</h2>
+        <p>Tus respuestas han sido registradas de manera exitosa y anónima.</p>
+        <p style="color:#666;font-size:14px;margin-top:20px;">Ya puedes cerrar esta ventana.</p>
+      `,
+      choices: ['Finalizar'], // FIX: botón en lugar de timeout ciego
+      on_finish: function() {
+        experimentoFinalizado = true;
+      }
+    };
+
+    timeline.push(DESPEDIDA);
+
+    /**
+     * ============================================
+     * EJECUCIÓN
+     * ============================================
+     */
+    jsPsych.run(timeline);
+  </script>
+</body>
+</html>
