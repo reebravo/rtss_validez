@@ -24,4 +24,3 @@ A través de la metodología RTSS, la prevención de caídas pasa de ser un conj
 ## 📚 Referencias / Citas
 * Van Stan, J. H., Dijkers, M. P., Whyte, J., Hart, T., Turkstra, L. S., Zanca, J. M., & Chen, C. (2019). The Rehabilitation Treatment Specification System: Implications for Improvements in Research Design, Reporting, Replication, and Synthesis. Archives of physical medicine and rehabilitation, 100(1), 146–155. https://doi.org/10.1016/j.apmr.2018.09.112
 * Van Stan, J. H., Whyte, J., Duffy, J. R., Barkmeier-Kraemer, J. M., Doyle, P. B., Gherson, S., Kelchner, L., Muise, J., Petty, B., Roy, N., Stemple, J., Thibeault, S., & Tolejano, C. J. (2021). Rehabilitation Treatment Specification System: Methodology to Identify and Describe Unique Targets and Ingredients. Archives of physical medicine and rehabilitation, 102(3), 521–531. https://doi.org/10.1016/j.apmr.2020.09.383
-* 
