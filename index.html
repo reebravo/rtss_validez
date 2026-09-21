@@ -23,11 +23,10 @@
   <script src="jspsych/dist/plugin-survey-multi-choice.js"></script>
   <script src="jspsych/dist/plugin-html-slider-response.js"></script>
   <script src="jspsych/dist/plugin-survey-multi-select.js"></script>
-  <script src="jspsych/dist/plugin-fullscreen.js"></script>
   <script src="jspsych/dist/plugin-instructions.js"></script>
   <script src="jspsych/dist/plugin-preload.js"></script>
 
-  <!-- FIX: Plugin SurveyJS (@jspsych/plugin-survey) -->
+  <!-- Plugin SurveyJS (@jspsych/plugin-survey) -->
   <script src="https://unpkg.com/@jspsych/plugin-survey@1.0.1"></script>
   <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@1.0.1/css/survey.css">
 
@@ -43,11 +42,6 @@
 
   <script>
     /**
-     * Detección segura de iOS / iPhone
-     */
-    const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-    /**
      * ============================================
      * CONFIGURACIÓN PRINCIPAL
      * ============================================
@@ -60,8 +54,10 @@
 
     let experimentoFinalizado = false;
 
+    // Control seguro de advertencia al salir (desactivado para móviles)
+    const esMovil = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     window.addEventListener('beforeunload', (event) => {
-      if (experimentoFinalizado || esIOS) return; // Se desactiva en iOS para evitar congelamiento de UI
+      if (experimentoFinalizado || esMovil) return;
       event.preventDefault();
       event.returnValue = '¿Estás seguro de que quieres salir? Perderás tu progreso.';
     });
@@ -223,12 +219,11 @@
 
     /**
      * ============================================
-     * BIENVENIDA (Inmunizado para iPhone)
+     * BIENVENIDA (Sin Pantalla Completa)
      * ============================================
      */
     const BIENVENIDA = {
-      type: esIOS ? jsPsychHtmlButtonResponse : jsPsychFullscreen,
-      fullscreen_mode: true,
+      type: jsPsychHtmlButtonResponse,
       stimulus: `
         <div class="message-container">
           <div class="logo-container">
@@ -248,34 +243,7 @@
           </p>
         </div>
       `,
-      message: `
-        <div class="message-container">
-          <div class="logo-container">
-            <img src="img/logo_uaeh.png" alt="Logo UAEH">
-            <img src="img/logo_icsa.png" alt="Logo ICSA">
-          </div>
-          <h2>¡Bienvenido!</h2>
-          <p style="font-size: 18px; color: #555;">
-            Los responsables de este proyecto de investigación
-          </p>
-          <p style="font-size: 20px; color: #000;">
-            <strong>¡AGRADECEN TU PARTICIPACIÓN!</strong>
-          </p>
-          <p style="margin-top: 25px; line-height: 1.8; color: #333;">
-            Daniela Vargas Ramirez <br>
-            Dr. Ricardo I. Bravo Chávez <br>
-          </p>
-        </div>
-      `,
-      choices: ['Comenzar'],
-      button_label: 'Comenzar',
-      on_finish: function() {
-        if (!esIOS && document.fullscreenElement) {
-          document.exitFullscreen().catch(err => {
-            console.log('Error al salir de pantalla completa:', err);
-          });
-        }
-      }
+      choices: ['Comenzar']
     };
 
     /**
@@ -549,7 +517,7 @@
       `
         <div style="max-width:650px;text-align:justify;margin:0 auto;line-height:1.6;font-size:14px;">
           <p style="text-align:center;font-size:16px;"><b>¡Bienvenido/a al experimento!</b></p>
-          <p>Este estudio se enmarca en el <b>Sistema de Especificación de Tratamiento de Rehabilitación o RTSS</b> (por sus siglas en inglés). El <a href="https://pubmed.ncbi.nlm.nih.gov/30267666/">RTSS</a> constituye un marco metodológico diseñado para aportar precisión terminológica y rigor a los procedimientos clínicos mediante la descomposición de cualquier intervención en una tríada causal compuesta por:</p>
+          <p>Este estudio se enmarca en el <b>Sistema de Especificación de Tratamiento de Rehabilitación o RTSS</b> (por sus siglas en inglés). El <a href="https://pubmed.ncbi.nlm.nih.gov/30267666/" target="_blank">RTSS</a> constituye un marco metodológico diseñado para aportar precisión terminológica y rigor a los procedimientos clínicos mediante la descomposición de cualquier intervención en una tríada causal compuesta por:</p>
           <ul style="padding-left:20px;margin-bottom:15px;">
             <li style="margin-bottom:8px;"><b>Ingredientes:</b> Acciones observables y materiales seleccionados por el terapeuta.</li>
             <li style="margin-bottom:8px;"><b>Mecanismos de acción:</b> Procesos biológicos o psicológicos activados por dichos ingredientes.</li>
@@ -630,14 +598,7 @@
           </p>
         </div>
       `,
-      choices: ['Continuar'],
-      on_finish: function() {
-        if (!esIOS && document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(err => {
-            console.log("Error al entrar en pantalla completa:", err);
-          });
-        }
-      }
+      choices: ['Continuar']
     };
 
     const TRANSICION_ENTRE_BLOQUES = {
